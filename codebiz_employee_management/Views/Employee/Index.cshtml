@@ -1,0 +1,138 @@
+﻿
+@{
+    ViewBag.Title = "Codebiz Employee Management";
+}
+
+<h2><img src="~/Images/codebiz_logo_50.png" /> Codebiz Employee Management</h2>
+
+<a class="btn btn-primary" style="margin-bottom:10px" onclick="PopupForm('@Url.Action("AddOrEdit","Employee")')">Add New</a>
+
+<table id="employeeTable" class="table table-striped table-bordered" style="width:100%"> 
+    <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Middle Name</th>
+            <th>Last Name</th>
+            <th>Birthdate</th>
+            <th>Contact Number</th>
+            <th>Address</th>
+            <th></th>
+        </tr>
+    </thead>
+</table>
+
+<link href="https://cdn.datatables.net/1.12.1/css/dataTables.bootstrap.min.css" rel="stylesheet" />
+
+@section scripts{
+    <script src="//cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.12.1/js/dataTables.bootstrap.min.js"></script>
+    <script>
+        var Popup, dataTable;
+        
+        function convertToDate(value) {
+            var pattern = /Date\(([^)]+)\)/;
+            var results = pattern.exec(value);
+            var dt = new Date(parseFloat(results[1]));
+            return (dt.getMonth() + 1).toLocaleString() + "/" + dt.getDate() + "/" + dt.getFullYear();
+        }
+
+        $(document).ready(function () {
+            dataTable = $("#employeeTable").DataTable({
+                "ajax": {
+                    "url": "/Employee/GetData",
+                    "type": "GET",
+                    "datatype": "json",
+                },
+                "columns": [
+                    { "data": "firstName" },
+                    { "data": "middleName" },
+                    { "data": "lastName" },
+                    {
+                        "data": "birthdate", "render": function (data) {
+                            return convertToDate(data);
+                        }
+                    },
+                    { "data": "contactNumber" },
+                    { "data": "address" },
+                    {
+                        "data": "employeeId", "render": function (data) {
+                            return "<a class='btn btn-default btn-sm' onclick=PopupForm('@Url.Action("AddOrEdit","Employee")/"+ data +"')>Edit</a><a class='btn btn-danger btn-sm' style='margin-left:5px' onclick=Delete("+ data +")>Delete</a>"
+                        },
+                        "orderable": false,
+                        "searchable": false,
+                        "width": "150px"
+                    },
+
+                ],
+                "language": {
+                    "emptyTable" : "No data found, Please click on <b>Add New</b> Button"
+                }
+            });
+        });
+
+        function PopupForm(url) {
+            var formDiv = $('<div/>');
+            $.get(url)
+                .done(function (response) {
+                    formDiv.html(response);
+
+                    Popup = formDiv.dialog({
+                        autoOpen: true,
+                        resizable: false,
+                        title: "Add New Employee",
+                        width: 500,
+                        height: 700,
+                        close: function () {
+                            Popup.dialog('destroy').remove();
+                        }
+                    });
+                });
+        }
+
+        function SubmitForm(form) {
+
+            $.validator.unobtrusive.parse(form);
+            
+            if ($(form).valid()) {
+                $.ajax({
+                    type: "POST",
+                    url: form.action,
+                    data: $(form).serialize(),
+                    success: function (data) {
+                        if (data.success) {
+                            Popup.dialog('close');
+                            dataTable.ajax.reload();
+
+                            $.notify(data.message, {
+                                globalPosition : "top center",
+                                className : "success",
+                            })
+                        }
+                    }
+                });
+            }
+
+            return false;
+        }
+
+        function Delete(id) {
+            if (confirm('Are you sure to delete this employee record?')) {
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("Delete","Employee")/' + id,
+                    success: function (data) {
+                        if (data.success) {
+
+                            dataTable.ajax.reload();
+
+                             $.notify(data.message, {
+                                globalPosition : "top center",
+                                className : "success",
+                            })
+                        }
+                    }
+                })
+            }
+        }
+    </script>
+    }
